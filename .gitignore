@@ -1,0 +1,4 @@
+# Translation results
+*.lst
+*.o
+*.exe
