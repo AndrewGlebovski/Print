@@ -25,15 +25,41 @@ _start:         ; Calling printf
 ;----------------------------------------
 ; Enter:    None
 ; Exit:     None
-; Destr:    RAX, RDX, RDI, RSI
+; Destr:    RAX, RBX, RDX, RDI, RSI
 ;----------------------------------------
 
 printf:         ; Syscall to output using arguments from stack
                 mov rax, 1
                 mov rdi, 1
                 mov rsi, [rsp+8]
-                mov rdx, [rsp+16]
+                mov rbx, [rsp+16]
+                
+                ; Set RDX for char print
+                mov rdx, 1
+
+                ; Test length for 0 first
+                jmp Test
+
+StrLoop:        ; Format specifier check
+                cmp byte [rsi], '%'
+                je Special
+
+                ; Print current character
                 syscall
+
+                ; To next iteration
+                jmp Iterate
+
+Special:        ; Switch statement
+                nop
+
+Iterate:        ; Iterate
+                inc rsi
+                dec rbx      
+                
+Test:           ; Test
+                cmp rbx, 0
+                jne StrLoop
 
                 ret
 
