@@ -1,20 +1,14 @@
 ;----------------------------------------
-; Prints data using format string
-;
-; Arguments order in stack:
-;  <integer to print>
-;  <buffer to print>
+; Converts argument to hexadecimal format and writes result to buffer
+; !!! Buffer must be at least 16 bytes size
 ;----------------------------------------
-; Enter:        None
+; Enter:        RAX = integer, RSI = buffer address
 ; Exit:         None
-; Destr:        RAX, RBX, RCX, RSI
+; Destr:        RAX, RBX, RCX
 ;----------------------------------------
 
-PrtHex:         ; Set argument in RAX
-                mov rax, [rsp+16]
-                mov rsi, [rsp+8]
-
-                mov rcx, 15
+PrtHex:         ; Set loop length
+                mov rcx, HexBufSize - 1
 
 .Loop:          mov rbx, rax
                 and rbx, 0x0f
@@ -40,22 +34,51 @@ PrtHex:         ; Set argument in RAX
 
 
 ;----------------------------------------
-; Prints data using format string
-;
-; Arguments order in stack:
-;  <integer to print>
-;  <buffer to print>
+; Converts argument to octal format and writes result to buffer
+; !!! Buffer must be at least 22 bytes size
 ;----------------------------------------
-; Enter:        None
+; Enter:        RAX = integer, RSI = buffer address
 ; Exit:         None
-; Destr:        RAX, RBX, RCX, RSI
+; Destr:        RAX, RBX, RCX
 ;----------------------------------------
 
-PrtBin:         ; Set argument in RAX
-                mov rax, [rsp+16]
-                mov rsi, [rsp+8]
+PrtOct:         ; Set loop length
+                mov rcx, OctBufSize - 1
 
-                mov rcx, 63
+.Loop:          mov rbx, rax
+                and rbx, 7
+                add rbx, '0'
+
+                mov [rsi, rcx], bl
+
+                dec rcx
+                shr rax, 3
+                jne .Loop
+
+                jmp .Test
+
+                ; Set forward zeros
+.Next           mov byte [rsi, rcx], 0
+                dec rcx
+.Test           cmp rcx, -1
+                jne .Next
+
+                ret
+
+;----------------------------------------
+
+
+;----------------------------------------
+; Converts argument to binary format and writes result to buffer
+; !!! Buffer must be at least 64 bytes size
+;----------------------------------------
+; Enter:        RAX = integer, RSI = buffer address
+; Exit:         None
+; Destr:        RAX, RBX, RCX
+;----------------------------------------
+
+PrtBin:         ; Set loop length
+                mov rcx, BinBufSize - 1
 
 .Loop:          mov bl, al
                 and bl, 1
@@ -83,24 +106,19 @@ PrtBin:         ; Set argument in RAX
 
 
 ;----------------------------------------
-; Prints data using format string
-;
-; Arguments order in stack:
-;  <integer to print>
-;  <buffer to print>
+; Converts argument to decimal format and writes result to buffer
+; !!! Buffer must be at least 20 bytes size
 ;----------------------------------------
-; Enter:        None
+; Enter:        RAX = integer, RSI = buffer address
 ; Exit:         None
-; Destr:        RAX, RBX, RCX, RDX, RSI
+; Destr:        RAX, RBX, RCX, RDX
 ;----------------------------------------
 
-PrtDec:         ; Set argument
-                mov rax, [rsp+16]
+PrtDec:         ; Set high order bits of RAX to low order bits of RDX and set loop length
                 mov rdx, rax
                 shr rdx, 32
-                mov rsi, [rsp+8]
 
-                mov rcx, 19
+                mov rcx, DecBufSize - 1
                 mov rbx, 10
 
                 ; Set digits
