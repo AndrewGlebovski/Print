@@ -58,7 +58,7 @@ Printf:         ; Save RBP
 
                 ; Set arguments from stack
                 mov rax, CallWrite
-                mov rdi, ByteSize
+                mov rdi, StdOut
                 mov rsi, [rsp+16]
                 mov r10, [rsp+24]
                 
