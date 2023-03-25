@@ -19,6 +19,9 @@ OctBufSize      equ 22
 DecBufSize      equ 20
 HexBufSize      equ 16
 
+BufSize         equ 512
+ExtraSize       equ 64
+
 
 _start:         ; Set arguments
                 sub rsp, 25
@@ -39,6 +42,29 @@ _start:         ; Set arguments
                 syscall
 
 
+
+;----------------------------------------
+; Flush buffer to STDOUT
+;----------------------------------------
+; Enter:        None
+; Exit:         None
+; Destr:        RAX, RDX, RDI, RSI
+;----------------------------------------
+
+%macro          FlushBuf 0
+
+                sub rdi, Buffer
+                mov rdx, rdi
+                mov rax, CallWrite
+                mov rdi, StdOut
+                mov rsi, Buffer
+                syscall
+
+%endmacro
+
+;----------------------------------------
+
+
 ;----------------------------------------
 ; Prints data using format string
 ;
@@ -57,14 +83,13 @@ Printf:         ; Save RBP
                 mov rbp, rsp            ; RBP always points to current argument
 
                 ; Set arguments from stack
-                mov rax, CallWrite
-                mov rdi, StdOut
                 mov rsi, [rsp+16]
+                mov rdi, Buffer
+
                 mov r10, [rsp+24]
-                
-                mov rdx, ByteSize
-                add rbp, 32             ; Skip return address, format string address and size
                 add r10, rsi
+
+                add rbp, 32             ; Skip return address, format string address and size
 
                 ; Test length for 0 first
                 jmp .Test
@@ -73,10 +98,7 @@ Printf:         ; Save RBP
                 cmp byte [rsi], '%'
                 je .Special
 
-                syscall
-
-                inc rsi
-
+                movsb
                 jmp .Test
 
 .Special:       ; Special format case
@@ -88,127 +110,152 @@ Printf:         ; Save RBP
                 jne .Switch
 
                 ; Print '%'
-                mov rax, CallWrite
-
-                syscall
-
-                inc rsi
-
-                jmp .Loop
+                movsb
+                jmp .Test
 
 .Switch:        ; My switch implementation
-                sub rax, 'b'
+                inc rsi                 ; Update RSI manually
 
+                sub rax, 'b'
                 cmp rax, 'x' - 'b'
                 ja .error
 
                 jmp JumpTable[rax * QWordSize]
 
 .b:             ; Binary print
-                push rsi
-
                 mov eax, [rbp]
-                mov rsi, Buffer
                 call PrtBin
 
-                add rbp, DWordSize
+                add rbp, DWordSize      ; To next arg in stack
 
-                mov rax, CallWrite
-                mov rdx, BinBufSize
+                add rdi, BinBufSize     ; Update RDI manually
 
-                jmp .Write
+                jmp .Test
 
 .c:             ; Character print
-                push rsi
+                mov rax, rsi            ; Save RSI
 
                 mov rsi, rbp
+                movsb
 
-                inc rbp
+                mov rsi, rax             ; Restore RSI
 
-                jmp .Write
+                inc rbp                 ; To next arg in stack
+
+                jmp .Test
 
 .d:             ; Decimal print
-                push rsi
-
                 mov eax, [rbp]
-                mov rsi, Buffer
                 call PrtDec
 
-                add rbp, DWordSize
+                add rbp, DWordSize      ; To next arg in stack
 
-                mov rax, CallWrite
-                mov rdx, DecBufSize
+                add rdi, DecBufSize     ; Update RSI (and RDI) manually
 
-                jmp .Write
+                jmp .Test
 
 .o:             ; Octal print
-                push rsi
-
                 mov eax, [rbp]
-                mov rsi, Buffer
-                call PrtOct
+                call PrtDec
 
-                add rbp, DWordSize
+                add rbp, DWordSize      ; To next arg in stack
 
-                mov rax, CallWrite
-                mov rdx, OctBufSize
+                add rdi, OctBufSize     ; Update RSI (and RDI) manually
 
-                jmp .Write
+                jmp .Test
 
 .s:             ; String print
-                push rsi
+                push rsi                ; Save RSI
 
                 mov rsi, [rbp]
-                call StrLen
+                call StrLen             ; RAX = string length
 
-                mov rdx, rax
+                cmp rax, RealBufSize    ; Check if string is bigger than whole buffer
+                jb .SmallStr
+
+                push rax                ; Save original length
+
+                FlushBuf                ; Flush buffer
+
+                pop rdx                 ; Restore length
+                mov rsi, [rbp]
                 mov rax, CallWrite
+                mov rdi, StdOut
+                syscall                 ; Flush string
 
-                add rbp, QWordSize
+                mov rdi, Buffer         ; Set RDI manually
 
-                jmp .Write
+                jmp .Update
+
+.SmallStr:      ; Check if string overflowing buffer
+                mov rcx, rdi
+                add rcx, rax
+                cmp rcx, Buffer + RealBufSize
+                jbe .NoOverflow
+                
+                mov rcx, Buffer + RealBufSize
+                sub rcx, rdi            ; RCX = Amount of symbols needed to fill buffer
+                sub rax, rcx            ; RAX = Amount of symbols left after buffer filled
+                push rax                ; Save symbols that left in string to print
+
+                rep movsb               ; Fill buffer to it's maximum
+
+                FlushBuf                ; Flush buffer
+                mov rdi, Buffer         ; Set RDI manually
+
+                pop rax                 ; Restore symbols that left to read
+                mov rsi, [rbp]          ; Set RSI to string again
+
+.NoOverflow:    ; Write string to buffer
+                mov rcx, rax
+                rep movsb
+
+.Update:        ; Update and restore some params
+                add rbp, QWordSize      ; To next arg in stack
+
+                pop rsi                 ; Restore RSI
+
+                jmp .Test
 
 .x:             ; Hexadecimal print
-                push rsi
-
                 mov eax, [rbp]
-                mov rsi, Buffer
-                call PrtHex
+                call PrtDec
 
-                add rbp, DWordSize
+                add rbp, DWordSize      ; To next arg in stack
 
-                mov rax, CallWrite
-                mov rdx, HexBufSize
+                add rdi, HexBufSize     ; Update RDI manually
 
-                jmp .Write
+                jmp .Test
 
 .error:         ; Unknown format (Restore RBP and return immediately)
                 pop rbp
 
-                ; Exit code 1
-                mov rax, 1
+                mov rax, 1              ; Exit code 1
 
                 ret
-
-.Write:         ; Write result to stdout
-                syscall
-
-                pop rsi
-
-                mov rax, CallWrite
-                mov rdx, ByteSize
-
-                inc rsi
                 
-.Test:          ; Test
+.Test:          ; Buffer overflow check
+                cmp rdi, Buffer + BufSize
+                jb .SkipFlush
+
+                push rsi                ; Save RSI
+
+                FlushBuf
+
+                pop rsi                 ; Restore RSI
+                mov rdi, Buffer         ; Set RDI manully
+
+                jmp .Test
+
+.SkipFlush:     ; Check if format string over
                 cmp rsi, r10
-                jne .Loop
+                jb .Loop
 
-                ; Restore RBP
-                pop rbp
+                pop rbp                 ; Restore RBP
 
-                ; Exit code 0
-                xor rax, rax
+                FlushBuf                ; Final flush
+
+                xor rax, rax            ; Exit code 0
 
                 ret
 
@@ -244,12 +291,12 @@ StrLen:         xor rax, rax
 section .data
 
 
-Example         db "Hello, World!", 0
-FormatStr       db "Dec: %d", 10, "Hex: %x", 10, "Oct: %o", 10, "Bin: %b", 10, "Chr: %c", 10, "Str: %s", 10, "Pro: %%", 10
+Example         db 1000 dup('!'), 0
+FormatStr       db "Dec: %b", 10, "Hex: %b", 10, "Oct: %b", 10, "Bin: %b", 10, "Chr: %c", 10, "Str: %s", 10, "Pro: %%", 10
 FormatStrLen    equ $ - FormatStr
 
-Buffer          db 64 dup(0)            ; Result buffer for convert functions
-BufSize         equ $ - Buffer          ; Result buffer length
+Buffer          db BufSize + ExtraSize dup(0)   ; Result buffer
+RealBufSize     equ $ - Buffer                  ; Result buffer length
 
 
 

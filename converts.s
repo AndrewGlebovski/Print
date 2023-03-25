@@ -2,7 +2,7 @@
 ; Converts argument to hexadecimal format and writes result to buffer
 ; !!! Buffer must be at least 16 bytes size
 ;----------------------------------------
-; Enter:        RAX = integer, RSI = buffer address
+; Enter:        RAX = integer, RDI = buffer address
 ; Exit:         None
 ; Destr:        RAX, RBX, RCX
 ;----------------------------------------
@@ -14,7 +14,7 @@ PrtHex:         ; Set loop length
                 and rbx, 0x0f
 
                 mov bl, HexTrans[rbx]
-                mov [rsi, rcx], bl
+                mov [rdi, rcx], bl
 
                 dec rcx
                 shr rax, 4
@@ -23,7 +23,7 @@ PrtHex:         ; Set loop length
                 jmp .Test
 
                 ; Set forward zeros
-.Next           mov byte [rsi, rcx], 0
+.Next           mov byte [rdi, rcx], 0
                 dec rcx
 .Test           cmp rcx, -1
                 jne .Next
@@ -37,7 +37,7 @@ PrtHex:         ; Set loop length
 ; Converts argument to octal format and writes result to buffer
 ; !!! Buffer must be at least 22 bytes size
 ;----------------------------------------
-; Enter:        RAX = integer, RSI = buffer address
+; Enter:        RAX = integer, RDI = buffer address
 ; Exit:         None
 ; Destr:        RAX, RBX, RCX
 ;----------------------------------------
@@ -49,7 +49,7 @@ PrtOct:         ; Set loop length
                 and rbx, 7
                 add rbx, '0'
 
-                mov [rsi, rcx], bl
+                mov [rdi, rcx], bl
 
                 dec rcx
                 shr rax, 3
@@ -58,7 +58,7 @@ PrtOct:         ; Set loop length
                 jmp .Test
 
                 ; Set forward zeros
-.Next           mov byte [rsi, rcx], 0
+.Next           mov byte [rdi, rcx], 0
                 dec rcx
 .Test           cmp rcx, -1
                 jne .Next
@@ -72,7 +72,7 @@ PrtOct:         ; Set loop length
 ; Converts argument to binary format and writes result to buffer
 ; !!! Buffer must be at least 64 bytes size
 ;----------------------------------------
-; Enter:        RAX = integer, RSI = buffer address
+; Enter:        RAX = integer, RDI = buffer address
 ; Exit:         None
 ; Destr:        RAX, RBX, RCX
 ;----------------------------------------
@@ -84,7 +84,7 @@ PrtBin:         ; Set loop length
                 and bl, 1
                 add bl, '0'
 
-                mov [rsi, rcx], bl
+                mov [rdi, rcx], bl
 
                 dec rcx
                 shr rax, 1
@@ -95,7 +95,7 @@ PrtBin:         ; Set loop length
                 jmp .Test
 
                 ; Set forward zeros
-.Next           mov byte [rsi, rcx], 0
+.Next           mov byte [rdi, rcx], 0
                 dec rcx
 .Test           cmp rcx, -1
                 jne .Next
@@ -109,7 +109,7 @@ PrtBin:         ; Set loop length
 ; Converts argument to decimal format and writes result to buffer
 ; !!! Buffer must be at least 20 bytes size
 ;----------------------------------------
-; Enter:        RAX = integer, RSI = buffer address
+; Enter:        RAX = integer, RDI = buffer address
 ; Exit:         None
 ; Destr:        RAX, RBX, RCX, RDX
 ;----------------------------------------
@@ -125,7 +125,7 @@ PrtDec:         ; Set high order bits of RAX to low order bits of RDX and set lo
 .Loop:          div ebx
                 add dl, '0'
 
-                mov [rsi, rcx], dl
+                mov [rdi, rcx], dl
 
                 xor rdx, rdx
                 dec rcx
@@ -136,7 +136,7 @@ PrtDec:         ; Set high order bits of RAX to low order bits of RDX and set lo
                 jmp .Test
 
                 ; Set forward zeros
-.Next           mov byte [rsi, rcx], 0
+.Next           mov byte [rdi, rcx], 0
                 dec rcx
 .Test           cmp rcx, -1
                 jne .Next
