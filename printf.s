@@ -27,10 +27,10 @@ _start:         ; Set arguments
                 sub rsp, 25
                 mov qword [rsp+17], Example
                 mov byte [rsp+16], 0x21
-                mov dword [rsp+12], -2147483647
-                mov dword [rsp+8], -2147483647
-                mov dword [rsp+4], -2147483647
-                mov dword [rsp], -2147483647
+                mov dword [rsp+12], 2147483647
+                mov dword [rsp+8], 2147483647
+                mov dword [rsp+4], 2147483647
+                mov dword [rsp], 2147483647
                 push FormatStrLen
                 push FormatStr
 
@@ -102,9 +102,9 @@ Printf:         ; Save RBP
                 jmp .Test
 
 .Special:       ; Special format case
-                inc rsi
+                inc rsi                 ; Update RSI manually
                 xor rax, rax
-                mov al, byte [rsi]
+                mov al, byte [rsi]      ; Get specifier
 
                 cmp rax, '%'
                 jne .Switch
@@ -124,7 +124,9 @@ Printf:         ; Save RBP
 
 .b:             ; Binary print
                 mov eax, [rbp]
-                call PrtBin
+                mov r11, BinBufSize
+                mov cl, 1
+                call Converter
 
                 add rbp, DWordSize      ; To next arg in stack
 
@@ -156,7 +158,9 @@ Printf:         ; Save RBP
 
 .o:             ; Octal print
                 mov eax, [rbp]
-                call PrtOct
+                mov r11, OctBufSize
+                mov cl, 3
+                call Converter
 
                 add rbp, DWordSize      ; To next arg in stack
 
@@ -219,7 +223,9 @@ Printf:         ; Save RBP
 
 .x:             ; Hexadecimal print
                 mov eax, [rbp]
-                call PrtHex
+                mov r11, HexBufSize
+                mov cl, 4
+                call Converter
 
                 add rbp, DWordSize      ; To next arg in stack
 
@@ -228,7 +234,7 @@ Printf:         ; Save RBP
                 jmp .Test
 
 .error:         ; Unknown format (Restore RBP and return immediately)
-                pop rbp
+                pop rbp                 ; Restore RBP
 
                 mov rax, 1              ; Exit code 1
 
@@ -285,19 +291,114 @@ StrLen:         xor rax, rax
 ;----------------------------------------
 
 
-%include "converts.s"
+;----------------------------------------
+; Converts int32 to bin, oct, hex format
+;----------------------------------------
+; Enter:        RAX = integer, RDI = buffer address, R11 = buffer size, CL = bit shift
+; Exit:         None
+; Destr:        RAX, RBX, R11, RDX
+;----------------------------------------
+
+Converter:      ; Set bit mask
+                mov rdx, 1
+                shl rdx, cl
+                sub rdx, 1
+
+                dec r11                 ; RDI + R11 points to last symbol in buffer
+
+.Loop:          mov rbx, rax
+                and rbx, rdx
+
+                mov bl, HexTrans[rbx]
+                mov [rdi, r11], bl
+
+                dec r11
+                shr rax, cl
+                jne .Loop
+
+                jmp .Test
+
+                ; Set forward zeros
+.Next           mov byte [rdi, r11], '0'
+                dec r11
+
+.Test           cmp r11, -1
+                jne .Next
+
+                ret
+
+;----------------------------------------
+
+
+;----------------------------------------
+; Converts int32 to decimal format and writes result to buffer
+;----------------------------------------
+; Enter:        RAX = integer, RDI = buffer address
+; Exit:         None
+; Destr:        RAX, RBX, RCX, RDX, R11
+;----------------------------------------
+
+PrtDec:         ; Set high order bits of RAX to low order bits of RDX and set loop length
+                xor rdx, rdx
+
+                mov rcx, DecBufSize - 1
+                mov rbx, 10
+
+                xor r11, r11
+
+                cmp eax, 0
+                jge .Loop
+
+                ; Take number module
+                mov r11, 1 << 32        
+                sub r11, rax
+                mov rax, r11
+
+                mov r11, 1              ; Remember number sign in R11
+
+                ; Set digits
+.Loop:          div ebx
+                add dl, '0'
+
+                mov [rdi, rcx], dl
+
+                xor rdx, rdx
+                dec rcx
+
+                cmp eax, 0
+                jne .Loop
+
+                ; Check if number was negative
+                cmp r11, 0
+                je .Test
+
+                ; Set sign
+                mov byte [rdi, rcx], '-'
+                dec rcx
+
+                jmp .Test
+
+                ; Set forward zeros
+.Next           mov byte [rdi, rcx], 0
+                dec rcx
+                
+.Test           cmp rcx, -1
+                jne .Next
+
+                ret
+
+;----------------------------------------
 
 
 section .data
 
 
-Example         db 50 dup('!'), 0
+Example         db "Hello, World!", 0
 FormatStr       db "Dec: %d", 10, "Hex: %x", 10, "Oct: %o", 10, "Bin: %b", 10, "Chr: %c", 10, "Str: %s", 10, "Pro: %%", 10
 FormatStrLen    equ $ - FormatStr
 
 Buffer          db BufSize + ExtraSize dup(0)   ; Result buffer
 RealBufSize     equ $ - Buffer                  ; Result buffer length
-
 
 
 section .rodata
