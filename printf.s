@@ -75,21 +75,23 @@ _start:         ; Set arguments
 ;----------------------------------------
 ; Enter:        None
 ; Exit:         RAX = 1 - something went wrong | 0 - ok
-; Destr:        RAX, RBX, RCX, RDX, RDI, RSI, R10, R11
+; Destr:        RAX, RCX, RDX, RDI, RSI, R10, R11
 ;----------------------------------------
 
-Printf:         ; Save RBP
+Printf:         ; Save RBX, RBP
+                push rbx
                 push rbp
+
                 mov rbp, rsp            ; RBP always points to current argument
 
                 ; Set arguments from stack
-                mov rsi, [rsp+16]
+                mov rsi, [rsp+24]
                 mov rdi, Buffer
 
-                mov r10, [rsp+24]
+                mov r10, [rsp+32]
                 add r10, rsi
 
-                add rbp, 32             ; Skip return address, format string address and size
+                add rbp, 40             ; Skip return address, format string address and size
 
                 ; Test length for 0 first
                 jmp .Test
@@ -235,6 +237,7 @@ Printf:         ; Save RBP
 
 .error:         ; Unknown format (Restore RBP and return immediately)
                 pop rbp                 ; Restore RBP
+                pop rbx                 ; Restore RBX
 
                 mov rax, 1              ; Exit code 1
 
@@ -258,6 +261,7 @@ Printf:         ; Save RBP
                 jb .Loop
 
                 pop rbp                 ; Restore RBP
+                pop rbx                 ; Restore RBX
 
                 FlushBuf                ; Final flush
 
