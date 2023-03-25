@@ -19,8 +19,8 @@ OctBufSize      equ 11
 DecBufSize      equ 11
 HexBufSize      equ 8
 
-BufSize         equ 512
-ExtraSize       equ 64
+BufSize         equ 512                 ; Buffer flush is not necessary until buffer size reach this limit
+ExtraSize       equ 64                  ; Extra space after BufSize to protect data from buffer overflow
 
 
 _start:         ; Set arguments
@@ -381,7 +381,7 @@ PrtDec:         ; Set high order bits of RAX to low order bits of RDX and set lo
                 ; Set forward zeros
 .Next           mov byte [rdi, rcx], 0
                 dec rcx
-                
+
 .Test           cmp rcx, -1
                 jne .Next
 
@@ -397,15 +397,15 @@ Example         db "Hello, World!", 0
 FormatStr       db "Dec: %d", 10, "Hex: %x", 10, "Oct: %o", 10, "Bin: %b", 10, "Chr: %c", 10, "Str: %s", 10, "Pro: %%", 10
 FormatStrLen    equ $ - FormatStr
 
-Buffer          db BufSize + ExtraSize dup(0)   ; Result buffer
-RealBufSize     equ $ - Buffer                  ; Result buffer length
+Buffer          db BufSize + ExtraSize dup(0)   ; Printf buffer
+RealBufSize     equ $ - Buffer                  ; Real buffer length = BufSize + ExtraSize
 
 
 section .rodata
 
 
 align 8
-JumpTable:
+JumpTable:                                      ; Printf jump table
         dq Printf.b
         dq Printf.c
         dq Printf.d
@@ -430,4 +430,4 @@ JumpTable:
         dq Printf.error
         dq Printf.x
 
-HexTrans        db "0123456789ABCDEF"   ; Hex translator
+HexTrans        db "0123456789ABCDEF"           ; Array for numbers convertions
