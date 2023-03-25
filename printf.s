@@ -14,10 +14,10 @@ DWordSize       equ 4
 WordSize        equ 2
 ByteSize        equ 1
 
-BinBufSize      equ 64
-OctBufSize      equ 22
-DecBufSize      equ 20
-HexBufSize      equ 16
+BinBufSize      equ 32
+OctBufSize      equ 11
+DecBufSize      equ 11
+HexBufSize      equ 8
 
 BufSize         equ 512
 ExtraSize       equ 64
@@ -27,10 +27,10 @@ _start:         ; Set arguments
                 sub rsp, 25
                 mov qword [rsp+17], Example
                 mov byte [rsp+16], 0x21
-                mov dword [rsp+12], 40000000
-                mov dword [rsp+8], 40000000
-                mov dword [rsp+4], 40000000
-                mov dword [rsp], 40000000
+                mov dword [rsp+12], -2147483647
+                mov dword [rsp+8], -2147483647
+                mov dword [rsp+4], -2147483647
+                mov dword [rsp], -2147483647
                 push FormatStrLen
                 push FormatStr
 
@@ -156,7 +156,7 @@ Printf:         ; Save RBP
 
 .o:             ; Octal print
                 mov eax, [rbp]
-                call PrtDec
+                call PrtOct
 
                 add rbp, DWordSize      ; To next arg in stack
 
@@ -219,7 +219,7 @@ Printf:         ; Save RBP
 
 .x:             ; Hexadecimal print
                 mov eax, [rbp]
-                call PrtDec
+                call PrtHex
 
                 add rbp, DWordSize      ; To next arg in stack
 
@@ -291,8 +291,8 @@ StrLen:         xor rax, rax
 section .data
 
 
-Example         db 1000 dup('!'), 0
-FormatStr       db "Dec: %b", 10, "Hex: %b", 10, "Oct: %b", 10, "Bin: %b", 10, "Chr: %c", 10, "Str: %s", 10, "Pro: %%", 10
+Example         db 50 dup('!'), 0
+FormatStr       db "Dec: %d", 10, "Hex: %x", 10, "Oct: %o", 10, "Bin: %b", 10, "Chr: %c", 10, "Str: %s", 10, "Pro: %%", 10
 FormatStrLen    equ $ - FormatStr
 
 Buffer          db BufSize + ExtraSize dup(0)   ; Result buffer

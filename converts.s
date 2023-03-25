@@ -1,6 +1,5 @@
 ;----------------------------------------
-; Converts argument to hexadecimal format and writes result to buffer
-; !!! Buffer must be at least 16 bytes size
+; Converts int32 to hexadecimal format and writes result to buffer
 ;----------------------------------------
 ; Enter:        RAX = integer, RDI = buffer address
 ; Exit:         None
@@ -23,7 +22,7 @@ PrtHex:         ; Set loop length
                 jmp .Test
 
                 ; Set forward zeros
-.Next           mov byte [rdi, rcx], 0
+.Next           mov byte [rdi, rcx], '0'
                 dec rcx
 .Test           cmp rcx, -1
                 jne .Next
@@ -34,8 +33,7 @@ PrtHex:         ; Set loop length
 
 
 ;----------------------------------------
-; Converts argument to octal format and writes result to buffer
-; !!! Buffer must be at least 22 bytes size
+; Converts int32 to octal format and writes result to buffer
 ;----------------------------------------
 ; Enter:        RAX = integer, RDI = buffer address
 ; Exit:         None
@@ -69,8 +67,7 @@ PrtOct:         ; Set loop length
 
 
 ;----------------------------------------
-; Converts argument to binary format and writes result to buffer
-; !!! Buffer must be at least 64 bytes size
+; Converts int32 to binary format and writes result to buffer
 ;----------------------------------------
 ; Enter:        RAX = integer, RDI = buffer address
 ; Exit:         None
@@ -95,7 +92,7 @@ PrtBin:         ; Set loop length
                 jmp .Test
 
                 ; Set forward zeros
-.Next           mov byte [rdi, rcx], 0
+.Next           mov byte [rdi, rcx], '0'
                 dec rcx
 .Test           cmp rcx, -1
                 jne .Next
@@ -106,8 +103,7 @@ PrtBin:         ; Set loop length
 
 
 ;----------------------------------------
-; Converts argument to decimal format and writes result to buffer
-; !!! Buffer must be at least 20 bytes size
+; Converts int32 to decimal format and writes result to buffer
 ;----------------------------------------
 ; Enter:        RAX = integer, RDI = buffer address
 ; Exit:         None
@@ -115,11 +111,20 @@ PrtBin:         ; Set loop length
 ;----------------------------------------
 
 PrtDec:         ; Set high order bits of RAX to low order bits of RDX and set loop length
-                mov rdx, rax
-                shr rdx, 32
+                xor rdx, rdx
 
                 mov rcx, DecBufSize - 1
                 mov rbx, 10
+
+                xor r11, r11
+
+                cmp eax, 0
+                jge .Loop
+
+                mov r11, 1 << 32
+                sub r11, rax
+                mov rax, r11
+                mov r11, 1              ; Remember number sign in R11
 
                 ; Set digits
 .Loop:          div ebx
@@ -132,6 +137,13 @@ PrtDec:         ; Set high order bits of RAX to low order bits of RDX and set lo
 
                 cmp eax, 0
                 jne .Loop
+
+                ; Set sign
+                cmp r11, 0
+                je .Test
+
+                mov byte [rdi, rcx], '-'
+                dec rcx
 
                 jmp .Test
 
