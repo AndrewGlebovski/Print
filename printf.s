@@ -27,7 +27,6 @@ _start:         ; Set arguments
                 push 2147483647
                 push 2147483647
                 push 2147483647
-                push FormatStrLen
                 push FormatStr
 
                 call Printf
@@ -84,10 +83,12 @@ Printf:         ; Save RBX, RBP
                 mov rsi, [rsp+24]
                 mov rdi, Buffer
 
-                mov r10, [rsp+32]
+                call StrLen             ; Calculate string length in RAX
+
+                mov r10, rax
                 add r10, rsi
 
-                add rbp, 40             ; Skip return address, format string address and size
+                add rbp, 32             ; Skip return address, format string address and size
 
                 ; Test length for 0 first
                 jmp .Test
@@ -384,8 +385,7 @@ section .data
 
 
 Example         db "Hello, World!", 0
-FormatStr       db "Dec: %d", 10, "Hex: %x", 10, "Oct: %o", 10, "Bin: %b", 10, "Chr: %c", 10, "Str: %s", 10, "Pro: %%", 10
-FormatStrLen    equ $ - FormatStr
+FormatStr       db "Dec: %d", 10, "Hex: %x", 10, "Oct: %o", 10, "Bin: %b", 10, "Chr: %c", 10, "Str: %s", 10, "Pro: %%", 10, 0
 
 Buffer          db BufSize + ExtraSize dup(0)   ; Printf buffer
 RealBufSize     equ $ - Buffer                  ; Real buffer length = BufSize + ExtraSize
