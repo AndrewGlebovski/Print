@@ -10,9 +10,6 @@ CallExit        equ 60
 StdOut          equ 1
 
 QWordSize       equ 8
-DWordSize       equ 4
-WordSize        equ 2
-ByteSize        equ 1
 
 BinBufSize      equ 32
 OctBufSize      equ 11
@@ -24,13 +21,12 @@ ExtraSize       equ 64                  ; Extra space after BufSize to protect d
 
 
 _start:         ; Set arguments
-                sub rsp, 25
-                mov qword [rsp+17], Example
-                mov byte [rsp+16], 0x21
-                mov dword [rsp+12], 2147483647
-                mov dword [rsp+8], 2147483647
-                mov dword [rsp+4], 2147483647
-                mov dword [rsp], 2147483647
+                push Example
+                push 0x21
+                push 2147483647
+                push 2147483647
+                push 2147483647
+                push 2147483647
                 push FormatStrLen
                 push FormatStr
 
@@ -122,19 +118,18 @@ Printf:         ; Save RBX, RBP
                 cmp rax, 'x' - 'b'
                 ja .error
 
-                jmp JumpTable[rax * QWordSize]
+                shl rax, 3
+                jmp JumpTable[rax]
 
 .b:             ; Binary print
-                mov eax, [rbp]
+                mov rax, [rbp]
                 mov r11, BinBufSize
                 mov cl, 1
                 call Converter
 
-                add rbp, DWordSize      ; To next arg in stack
-
                 add rdi, BinBufSize     ; Update RDI manually
 
-                jmp .Test
+                jmp .NextArg
 
 .c:             ; Character print
                 mov rax, rsi            ; Save RSI
@@ -142,33 +137,27 @@ Printf:         ; Save RBX, RBP
                 mov rsi, rbp
                 movsb
 
-                mov rsi, rax             ; Restore RSI
+                mov rsi, rax            ; Restore RSI
 
-                inc rbp                 ; To next arg in stack
-
-                jmp .Test
+                jmp .NextArg
 
 .d:             ; Decimal print
-                mov eax, [rbp]
+                mov rax, [rbp]
                 call PrtDec
-
-                add rbp, DWordSize      ; To next arg in stack
 
                 add rdi, DecBufSize     ; Update RSI (and RDI) manually
 
-                jmp .Test
+                jmp .NextArg
 
 .o:             ; Octal print
-                mov eax, [rbp]
+                mov rax, [rbp]
                 mov r11, OctBufSize
                 mov cl, 3
                 call Converter
 
-                add rbp, DWordSize      ; To next arg in stack
-
                 add rdi, OctBufSize     ; Update RSI (and RDI) manually
 
-                jmp .Test
+                jmp .NextArg
 
 .s:             ; String print
                 push rsi                ; Save RSI
@@ -217,23 +206,19 @@ Printf:         ; Save RBX, RBP
                 rep movsb
 
 .Update:        ; Update and restore some params
-                add rbp, QWordSize      ; To next arg in stack
-
                 pop rsi                 ; Restore RSI
 
-                jmp .Test
+                jmp .NextArg
 
 .x:             ; Hexadecimal print
-                mov eax, [rbp]
+                mov rax, [rbp]
                 mov r11, HexBufSize
                 mov cl, 4
                 call Converter
 
-                add rbp, DWordSize      ; To next arg in stack
-
                 add rdi, HexBufSize     ; Update RDI manually
 
-                jmp .Test
+                jmp .NextArg
 
 .error:         ; Unknown format (Restore RBP and return immediately)
                 pop rbp                 ; Restore RBP
@@ -242,7 +227,10 @@ Printf:         ; Save RBX, RBP
                 mov rax, 1              ; Exit code 1
 
                 ret
-                
+
+.NextArg:       ; To next argument in stack
+                add rbp, QWordSize
+
 .Test:          ; Buffer overflow check
                 cmp rdi, Buffer + BufSize
                 jb .SkipFlush
@@ -253,8 +241,6 @@ Printf:         ; Save RBX, RBP
 
                 pop rsi                 ; Restore RSI
                 mov rdi, Buffer         ; Set RDI manully
-
-                jmp .Test
 
 .SkipFlush:     ; Check if format string over
                 cmp rsi, r10
