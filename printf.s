@@ -21,6 +21,12 @@ ExtraSize       equ 64                  ; Extra space after BufSize to protect d
 
 
 _start:         ; Set arguments
+                push 127
+                push 33
+                push 100
+                push 3802
+                push Str2
+                push -1
                 push Example
                 push 0x21
                 push 2147483647
@@ -221,13 +227,12 @@ Printf:         ; Save RBX, RBP
 
                 jmp .NextArg
 
-.error:         ; Unknown format (Restore RBP and return immediately)
-                pop rbp                 ; Restore RBP
-                pop rbx                 ; Restore RBX
+.error:         ; Unknown specifier
+                dec rsi                 ; RSI is one symbol ahead at thsi point
 
-                mov rax, 1              ; Exit code 1
+                movsb                   ; Copy specifier
 
-                ret
+                jmp .Test
 
 .NextArg:       ; To next argument in stack
                 add rbp, QWordSize
@@ -385,7 +390,8 @@ section .data
 
 
 Example         db "Hello, World!", 0
-FormatStr       db "Dec: %d", 10, "Hex: %x", 10, "Oct: %o", 10, "Bin: %b", 10, "Chr: %c", 10, "Str: %s", 10, "Pro: %%", 10, 0
+Str2            db "Love", 0
+FormatStr       db "Dec: %d%p%e", 10, "Hex: %x", 10, "Oct: %o", 10, "Bin: %b", 10, "Chr: %c", 10, "Str: %s", 10, "Pro: %%", 10, "%d %s %x %d%%%c%b", 10, 0
 
 Buffer          db BufSize + ExtraSize dup(0)   ; Printf buffer
 RealBufSize     equ $ - Buffer                  ; Real buffer length = BufSize + ExtraSize
