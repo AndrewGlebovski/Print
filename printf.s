@@ -1,4 +1,4 @@
-global _start
+global WrapPrintf
 
 
 section .text
@@ -20,28 +20,34 @@ BufSize         equ 512                 ; Buffer flush is not necessary until bu
 ExtraSize       equ 64                  ; Extra space after BufSize to protect data from buffer overflow
 
 
-_start:         ; Set arguments
-                push 127
-                push 33
-                push 100
-                push 3802
-                push Str2
-                push -1
-                push Example
-                push 0x21
-                push 2147483647
-                push 2147483647
-                push 2147483647
-                push 2147483647
-                push FormatStr
+;----------------------------------------
+; Wrap for calling my printf that pushes six registers to stack
+;----------------------------------------
+; Enter:        None
+; Exit:         None
+; Destr:        None
+;----------------------------------------
+
+WrapPrintf:     pop qword [RealRetAdr]
+
+                push r9
+                push r8
+                push rcx
+                push rdx
+                push rsi
+                push rdi
 
                 call Printf
 
-                ; Exit 0
-                mov eax, CallExit
-                xor rdi, rdi
-                syscall
+                add rsp, 6 * QWordSize
 
+                push qword [RealRetAdr]
+
+                xor rax, rax
+
+                ret
+
+;----------------------------------------
 
 
 ;----------------------------------------
@@ -389,12 +395,10 @@ PrtDec:         ; Set high order bits of RAX to low order bits of RDX and set lo
 section .data
 
 
-Example         db "Hello, World!", 0
-Str2            db "Love", 0
-FormatStr       db "Dec: %d%p%e", 10, "Hex: %x", 10, "Oct: %o", 10, "Bin: %b", 10, "Chr: %c", 10, "Str: %s", 10, "Pro: %%", 10, "%d %s %x %d%%%c%b", 10, 0
-
 Buffer          db BufSize + ExtraSize dup(0)   ; Printf buffer
 RealBufSize     equ $ - Buffer                  ; Real buffer length = BufSize + ExtraSize
+
+RealRetAdr      dq 0                            ; Return address for calling function
 
 
 section .rodata

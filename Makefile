@@ -1,7 +1,13 @@
-all: printf
+all: printf_asm.exe
 
 
-# Трансляция ассемблера
-printf: printf.s
-	nasm -f elf64 -l $@.lst $@.s
-	ld -s -o $@.exe $@.o
+printf_asm.exe: printf.o main.o
+	g++ -no-pie printf.o main.o -o $@
+
+
+main.o: main.cpp
+	g++ -c main.cpp -o $@
+
+
+printf.o: printf.s
+	nasm -f elf64 printf.s
