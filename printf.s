@@ -409,25 +409,11 @@ JumpTable:                                      ; Printf jump table
         dq Printf.b
         dq Printf.c
         dq Printf.d
-        dq Printf.error
-        dq Printf.error
-        dq Printf.error
-        dq Printf.error
-        dq Printf.error
-        dq Printf.error
-        dq Printf.error
-        dq Printf.error
-        dq Printf.error
-        dq Printf.error
+        dq 'o'-'d' - 1 dup(Printf.error)
         dq Printf.o
-        dq Printf.error
-        dq Printf.error
-        dq Printf.error
+        dq 's'-'o' - 1 dup(Printf.error)
         dq Printf.s
-        dq Printf.error
-        dq Printf.error
-        dq Printf.error
-        dq Printf.error
+        dq 'x'-'s' - 1 dup(Printf.error)
         dq Printf.x
 
 HexTrans        db "0123456789ABCDEF"           ; Array for numbers convertions
